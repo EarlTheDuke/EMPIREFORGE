@@ -69,10 +69,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Produce unit
   app.post("/api/games/:id/produce", async (req, res) => {
     try {
+      console.log('🎯 /produce endpoint called with body:', req.body);
       const parseResult = produceUnitSchema.safeParse(req.body);
       if (!parseResult.success) {
+        console.log('❌ Validation failed for /produce:', parseResult.error.errors);
         return res.status(400).json({ message: "Invalid production data", errors: parseResult.error.errors });
       }
+      console.log('✅ /produce validation passed:', parseResult.data);
 
       const game = await storage.getGame(req.params.id);
       if (!game) {
@@ -90,11 +93,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         winner: game.winner as any,
       };
 
+      console.log('🎯 Calling produceUnit with:', { cityId: parseResult.data.cityId, unitType: parseResult.data.unitType });
       const result = produceUnit(gameState, parseResult.data.cityId, parseResult.data.unitType);
+      console.log('🎯 produceUnit result:', result);
       
       if (!result.success) {
+        console.log('❌ produceUnit failed:', result.error);
         return res.status(400).json({ message: result.error });
       }
+      console.log('✅ produceUnit succeeded, updating game');
 
       const updatedGame = await storage.updateGame(req.params.id, result.gameState!);
       res.json(updatedGame);

@@ -112,18 +112,29 @@ export class MemStorage implements IStorage {
   }
 
   async addToQueue(gameId: string, cityId: string, unitType: UnitType): Promise<Game | undefined> {
+    console.log('🔧 addToQueue called:', { gameId, cityId, unitType });
     const game = this.games.get(gameId);
-    if (!game) return undefined;
+    if (!game) {
+      console.log('❌ Game not found for gameId:', gameId);
+      return undefined;
+    }
 
     const cities = [...(game.cities as City[])];
     const cityIndex = cities.findIndex(c => c.id === cityId);
-    if (cityIndex === -1) return undefined;
+    if (cityIndex === -1) {
+      console.log('❌ City not found for cityId:', cityId);
+      return undefined;
+    }
 
     const currentQueue = cities[cityIndex].productionQueue || [];
+    console.log('📋 Current queue before adding:', currentQueue);
+    
     cities[cityIndex] = {
       ...cities[cityIndex],
       productionQueue: [...currentQueue, unitType],
     };
+
+    console.log('📋 New queue after adding:', cities[cityIndex].productionQueue);
 
     const updatedGame: Game = {
       ...game,
@@ -131,6 +142,7 @@ export class MemStorage implements IStorage {
     };
 
     this.games.set(gameId, updatedGame);
+    console.log('✅ Game updated successfully, returning updated game');
     return updatedGame;
   }
 

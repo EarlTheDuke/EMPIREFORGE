@@ -346,15 +346,42 @@ function produceUnitForPlayer(gameState: GameState, cityId: string, unitType: Un
     spawnX = waterTile.x;
     spawnY = waterTile.y;
   } else {
-    // Land units spawn at city (land tile)
+    // Land units spawn at city or adjacent land tile
     if (gameState.gridData[city.y][city.x] !== 'land') {
       return { success: false, error: "Cannot produce land units at water cities" };
     }
     
-    // Check if city tile is occupied
+    // Check if city tile is available, if not find adjacent land tile
     const existingUnit = gameState.units.find(u => u.x === city.x && u.y === city.y);
     if (existingUnit) {
-      return { success: false, error: "City tile is occupied" };
+      // Find adjacent free land tiles
+      const adjacentLandTiles = [];
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue; // Skip city tile itself
+          
+          const checkX = city.x + dx;
+          const checkY = city.y + dy;
+          
+          if (checkX >= 0 && checkX < GRID_SIZE.width && 
+              checkY >= 0 && checkY < GRID_SIZE.height && 
+              gameState.gridData[checkY][checkX] === 'land') {
+            const isOccupied = gameState.units.find(u => u.x === checkX && u.y === checkY);
+            if (!isOccupied) {
+              adjacentLandTiles.push({ x: checkX, y: checkY });
+            }
+          }
+        }
+      }
+      
+      if (adjacentLandTiles.length === 0) {
+        return { success: false, error: "No available land tiles adjacent to city for unit production" };
+      }
+      
+      // Use first available land tile
+      const landTile = adjacentLandTiles[0];
+      spawnX = landTile.x;
+      spawnY = landTile.y;
     }
   }
 
