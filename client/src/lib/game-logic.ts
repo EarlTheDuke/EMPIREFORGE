@@ -274,7 +274,8 @@ function resolveCombat(attacker: Unit, defender: Unit): CombatResult {
   };
 }
 
-export function produceUnit(gameState: GameState, cityId: string, unitType: UnitType): {
+// Generic production function for any player
+function produceUnitForPlayer(gameState: GameState, cityId: string, unitType: UnitType, owner: 'human' | 'ai'): {
   success: boolean;
   error?: string;
   gameState?: GameState;
@@ -284,15 +285,15 @@ export function produceUnit(gameState: GameState, cityId: string, unitType: Unit
     return { success: false, error: "City not found" };
   }
 
-  if (city.owner !== 'human') {
+  if (city.owner !== owner) {
     return { success: false, error: "Can only produce units in your own cities" };
   }
 
   const cost = UNIT_TYPES[unitType].cost;
-  const humanCities = gameState.cities.filter(c => c.owner === 'human').length;
+  const ownerCities = gameState.cities.filter(c => c.owner === owner).length;
   
   // Simple production check - need enough cities for cost
-  if (humanCities < cost) {
+  if (ownerCities < cost) {
     return { success: false, error: `Need at least ${cost} cities to produce ${unitType}` };
   }
 
@@ -350,7 +351,7 @@ export function produceUnit(gameState: GameState, cityId: string, unitType: Unit
     x: spawnX,
     y: spawnY,
     type: unitType,
-    owner: 'human',
+    owner: owner,
     moves: UNIT_TYPES[unitType].movement
   };
 
@@ -358,7 +359,17 @@ export function produceUnit(gameState: GameState, cityId: string, unitType: Unit
   return { success: true, gameState };
 }
 
+// Human-specific production function (maintains existing API)
+export function produceUnit(gameState: GameState, cityId: string, unitType: UnitType): {
+  success: boolean;
+  error?: string;
+  gameState?: GameState;
+} {
+  return produceUnitForPlayer(gameState, cityId, unitType, 'human');
+}
+
 export function performAITurn(gameState: GameState): GameState {
+  // AI Movement Phase - move first to free up city tiles
   const aiUnits = gameState.units.filter(u => u.owner === 'ai');
   
   aiUnits.forEach(unit => {
@@ -430,6 +441,75 @@ export function performAITurn(gameState: GameState): GameState {
             }
           }
         }
+      }
+    }
+  });
+
+  // AI Production Phase - produce after moving to ensure city tiles are free
+  const aiCities = gameState.cities.filter(c => c.owner === 'ai');
+  const aiCityCount = aiCities.length;
+  
+  // Robust AI production strategy with comprehensive fallbacks
+  aiCities.forEach(city => {
+    // Check if city is coastal (has adjacent water)
+    let isCoastal = false;
+    let hasWaterTile = false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const checkX = city.x + dx;
+        const checkY = city.y + dy;
+        if (checkX >= 0 && checkX < GRID_SIZE.width && 
+            checkY >= 0 && checkY < GRID_SIZE.height && 
+            gameState.gridData[checkY][checkX] === 'water') {
+          isCoastal = true;
+          // Check if water tile is unoccupied
+          const isOccupied = gameState.units.find(u => u.x === checkX && u.y === checkY);
+          if (!isOccupied) {
+            hasWaterTile = true;
+          }
+        }
+      }
+    }
+
+    // Check if city tile is occupied by own unit
+    const cityOccupied = gameState.units.find(u => u.x === city.x && u.y === city.y);
+    
+    // Build prioritized production list based on strategic needs and feasibility
+    const productionOptions: UnitType[] = [];
+    
+    // Current unit counts
+    const aiArmyCount = gameState.units.filter(u => u.owner === 'ai' && u.type === 'army').length;
+    const aiTransportCount = gameState.units.filter(u => u.owner === 'ai' && u.type === 'transport').length;
+    const desiredTransports = Math.max(1, Math.floor(aiCityCount / 3));
+    const humanNavalUnits = gameState.units.filter(u => 
+      u.owner === 'human' && 
+      ['transport', 'destroyer', 'submarine', 'cruiser', 'battleship'].includes(u.type)
+    ).length;
+
+    // Strategic priority: naval units first at coastal cities when needed
+    if (isCoastal && hasWaterTile) {
+      // Priority 1: Transport (if under quota)
+      if (aiCityCount >= UNIT_TYPES.transport.cost && aiTransportCount < desiredTransports) {
+        productionOptions.push('transport');
+      }
+      
+      // Priority 2: Destroyer (if naval threats or large empire)
+      if (aiCityCount >= UNIT_TYPES.destroyer.cost && 
+          (humanNavalUnits > 0 || aiCityCount >= 6)) {
+        productionOptions.push('destroyer');
+      }
+    }
+    
+    // Priority 3: Army (if city tile free and need more land forces)
+    if (!cityOccupied && aiCityCount >= UNIT_TYPES.army.cost && aiArmyCount <= aiCityCount) {
+      productionOptions.push('army');
+    }
+    
+    // Try production options in order until one succeeds
+    for (const unitType of productionOptions) {
+      const result = produceUnitForPlayer(gameState, city.id, unitType, 'ai');
+      if (result.success) {
+        break; // Success, move to next city
       }
     }
   });
