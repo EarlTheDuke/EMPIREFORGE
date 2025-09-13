@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(120, 5%, 8%);
+  --foreground: hsl(120, 30%, 85%);
+  --card: hsl(120, 10%, 12%);
+  --card-foreground: hsl(120, 25%, 80%);
+  --popover: hsl(120, 5%, 8%);
+  --popover-foreground: hsl(120, 30%, 85%);
+  --primary: hsl(120, 100%, 25%);
+  --primary-foreground: hsl(120, 5%, 95%);
+  --secondary: hsl(45, 100%, 50%);
+  --secondary-foreground: hsl(45, 5%, 10%);
+  --muted: hsl(120, 5%, 15%);
+  --muted-foreground: hsl(120, 15%, 60%);
+  --accent: hsl(180, 50%, 40%);
+  --accent-foreground: hsl(180, 5%, 95%);
+  --terminal: hsl(120, 100%, 35%);
+  --terminal-foreground: hsl(120, 5%, 95%);
+  --destructive: hsl(356.3033, 90.5579%, 54.3137%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(120, 20%, 25%);
+  --input: hsl(120, 10%, 18%);
+  --ring: hsl(120, 100%, 25%);
+  --chart-1: hsl(203.8863, 88.2845%, 53.1373%);
+  --chart-2: hsl(159.7826, 100%, 36.0784%);
+  --chart-3: hsl(42.0290, 92.8251%, 56.2745%);
+  --chart-4: hsl(147.1429, 78.5047%, 41.9608%);
+  --chart-5: hsl(341.4894, 75.2000%, 50.9804%);
+  --sidebar: hsl(120, 10%, 12%);
+  --sidebar-foreground: hsl(120, 25%, 80%);
+  --sidebar-primary: hsl(120, 100%, 25%);
+  --sidebar-primary-foreground: hsl(120, 5%, 95%);
+  --sidebar-accent: hsl(180, 50%, 40%);
+  --sidebar-accent-foreground: hsl(180, 5%, 95%);
+  --sidebar-border: hsl(120, 20%, 25%);
+  --sidebar-ring: hsl(120, 100%, 25%);
+  --font-sans: 'Courier Prime', 'Courier New', Monaco, 'Lucida Console', monospace;
+  --font-serif: Georgia, serif;
+  --font-mono: 'Courier Prime', 'Courier New', Monaco, 'Lucida Console', monospace;
+  --radius: 4px;
+  --shadow-2xs: 0px 2px 0px 0px hsl(120, 100%, 25%, 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(120, 100%, 25%, 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(120, 100%, 25%, 0.00), 0px 1px 2px -1px hsl(120, 100%, 25%, 0.00);
+  --shadow: 0px 2px 0px 0px hsl(120, 100%, 25%, 0.00), 0px 1px 2px -1px hsl(120, 100%, 25%, 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(120, 100%, 25%, 0.00), 0px 2px 4px -1px hsl(120, 100%, 25%, 0.00);
+  --shadow-lg: 0px 2px 0px 0px hsl(120, 100%, 25%, 0.00), 0px 4px 6px -1px hsl(120, 100%, 25%, 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(120, 100%, 25%, 0.00), 0px 8px 10px -1px hsl(120, 100%, 25%, 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(120, 100%, 25%, 0.00);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --background: hsl(120, 5%, 8%);
+  --foreground: hsl(120, 30%, 85%);
+  --card: hsl(120, 10%, 12%);
+  --card-foreground: hsl(120, 25%, 80%);
+  --popover: hsl(120, 5%, 8%);
+  --popover-foreground: hsl(120, 30%, 85%);
+  --primary: hsl(120, 100%, 25%);
+  --primary-foreground: hsl(120, 5%, 95%);
+  --secondary: hsl(45, 100%, 50%);
+  --secondary-foreground: hsl(45, 5%, 10%);
+  --muted: hsl(120, 5%, 15%);
+  --muted-foreground: hsl(120, 15%, 60%);
+  --accent: hsl(180, 50%, 40%);
+  --accent-foreground: hsl(180, 5%, 95%);
+  --terminal: hsl(120, 100%, 35%);
+  --terminal-foreground: hsl(120, 5%, 95%);
+  --destructive: hsl(356.3033, 90.5579%, 54.3137%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(120, 20%, 25%);
+  --input: hsl(120, 10%, 18%);
+  --ring: hsl(120, 100%, 25%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-mono antialiased bg-background text-foreground;
+  }
+}
+
+/* Game-specific styles */
+.grid-cell {
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 20px;
+  min-height: 20px;
+}
+
+.grid-cell:hover {
+  background-color: hsl(120, 100%, 25%, 0.1);
+}
+
+.grid-cell.water {
+  background-color: hsl(220, 50%, 15%);
+}
+
+.grid-cell.land {
+  background-color: hsl(60, 20%, 20%);
+}
+
+.grid-cell.fog {
+  background-color: hsl(0, 0%, 5%);
+  position: relative;
+}
+
+.grid-cell.fog::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    hsl(0, 0%, 10%),
+    hsl(0, 0%, 10%) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+}
+
+.unit-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--terminal);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.city-icon {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--secondary);
+  border-radius: 50%;
+}
+
+.selected {
+  box-shadow: inset 0 0 0 2px var(--terminal);
+}
+
+.combat-modal {
+  backdrop-filter: blur(4px);
+}
+
+.retro-button {
+  background: linear-gradient(145deg, hsl(120, 100%, 25%), hsl(120, 100%, 20%));
+  border: 1px solid hsl(120, 100%, 35%);
+  transition: all 0.2s ease;
+  color: var(--primary-foreground);
+}
+
+.retro-button:hover:not(:disabled) {
+  background: linear-gradient(145deg, hsl(120, 100%, 30%), hsl(120, 100%, 25%));
+  box-shadow: 0 0 10px hsl(120, 100%, 25%, 0.5);
+}
+
+.retro-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.retro-panel {
+  background: linear-gradient(145deg, hsl(120, 10%, 12%), hsl(120, 5%, 8%));
+  border: 2px solid var(--border);
+}
+
+.status-bar {
+  background: linear-gradient(90deg, hsl(120, 10%, 15%), hsl(120, 5%, 10%));
+  border-bottom: 2px solid var(--border);
+}
