@@ -122,6 +122,7 @@ export function useGameState(gameId: string | null) {
     isAddingToQueue: addToQueueMutation.isPending,
     isRemovingFromQueue: removeFromQueueMutation.isPending,
     moveResult: moveUnitMutation.data as { game: Game; combat?: CombatResult; events?: string[] } | undefined,
+    endTurnResult: endTurnMutation.data as { game: Game; events?: string[] } | undefined,
     createdGame: createGameMutation.data as Game | undefined,
   };
 }

@@ -530,6 +530,50 @@ export function performAITurn(gameState: GameState): GameState {
   return gameState;
 }
 
+export function processAutomaticProduction(gameState: GameState): { gameState: GameState; events: string[] } {
+  const events: string[] = [];
+  const humanCities = gameState.cities.filter(c => c.owner === 'human');
+  
+  // Process production for each human city
+  humanCities.forEach(city => {
+    let unitToProduceLookup: UnitType | null = null;
+    let removeFromQueue = false;
+    
+    // Check production queue first, then default production
+    if (city.productionQueue && city.productionQueue.length > 0) {
+      unitToProduceLookup = city.productionQueue[0];
+      removeFromQueue = true;
+    } else if (city.defaultProduction) {
+      unitToProduceLookup = city.defaultProduction;
+    }
+    
+    if (unitToProduceLookup) {
+      // Try to produce the unit
+      const result = produceUnitForPlayer(gameState, city.id, unitToProduceLookup, 'human');
+      
+      if (result.success && result.gameState) {
+        // Update game state with new unit
+        gameState = result.gameState;
+        
+        // Remove from queue if it was consumed from queue
+        if (removeFromQueue) {
+          const cityIndex = gameState.cities.findIndex(c => c.id === city.id);
+          if (cityIndex !== -1 && gameState.cities[cityIndex].productionQueue) {
+            gameState.cities[cityIndex].productionQueue = gameState.cities[cityIndex].productionQueue!.slice(1);
+          }
+        }
+        
+        // Add event for game history
+        events.push(`Turn ${gameState.turn}: ${unitToProduceLookup.toUpperCase()} automatically produced at (${city.x},${city.y})`);
+      }
+      // Note: If production fails (not enough cities, no space, etc.), we silently continue
+      // The player can manually produce later if needed
+    }
+  });
+  
+  return { gameState, events };
+}
+
 export function checkVictoryConditions(gameState: GameState): { gameOver: boolean; winner?: 'human' | 'ai' } {
   const humanCities = gameState.cities.filter(c => c.owner === 'human').length;
   const aiCities = gameState.cities.filter(c => c.owner === 'ai').length;

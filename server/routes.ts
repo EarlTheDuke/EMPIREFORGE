@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { gameStateSchema, moveUnitSchema, produceUnitSchema, setDefaultProductionSchema, addToQueueSchema, removeFromQueueSchema, type GameState } from "@shared/schema";
-import { generateInitialGameState, moveUnit, produceUnit, performAITurn, checkVictoryConditions, UNIT_TYPES } from "../client/src/lib/game-logic";
+import { generateInitialGameState, moveUnit, produceUnit, performAITurn, checkVictoryConditions, processAutomaticProduction, UNIT_TYPES } from "../client/src/lib/game-logic";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new game
@@ -201,6 +201,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
+      // Process automatic production for human cities
+      const productionResult = processAutomaticProduction(gameState);
+      gameState = productionResult.gameState;
+      const productionEvents = productionResult.events;
+
       // Perform AI turn
       gameState = performAITurn(gameState);
       
@@ -216,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedGame = await storage.updateGame(req.params.id, gameState);
-      res.json(updatedGame);
+      res.json({ game: updatedGame, events: productionEvents });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

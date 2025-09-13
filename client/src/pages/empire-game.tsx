@@ -36,6 +36,7 @@ export default function EmpireGame() {
     isAddingToQueue,
     isRemovingFromQueue,
     moveResult,
+    endTurnResult,
     createdGame
   } = useGameState(gameId);
 
@@ -69,6 +70,16 @@ export default function EmpireGame() {
       }
     }
   }, [moveResult]);
+
+  // Handle end turn result events
+  useEffect(() => {
+    if (endTurnResult) {
+      // Add production events from automatic production
+      if (endTurnResult.events && endTurnResult.events.length > 0) {
+        setGameHistory(prev => [...prev, ...endTurnResult.events!]);
+      }
+    }
+  }, [endTurnResult]);
 
   // Handle victory conditions
   useEffect(() => {
@@ -158,8 +169,8 @@ export default function EmpireGame() {
 
   const handleEndTurn = () => {
     endTurn();
-    setGameHistory(prev => [...prev, `Turn ${gameState.turn + 1} begins`]);
     // Reset unit moves will be handled server-side
+    // Production events will be handled by endTurnResult useEffect
     setSelectedUnit(null);
     setSelectedCity(null);
   };
