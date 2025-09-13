@@ -197,6 +197,19 @@ export function moveUnit(gameState: GameState, unitId: string, targetX: number, 
     return { success: false, error: "Unit has no moves left" };
   }
 
+  // Check terrain constraints FIRST - attacker must be able to occupy the tile
+  const isNavalUnit = (unit.type === 'transport' || unit.type === 'destroyer' || 
+                       unit.type === 'submarine' || unit.type === 'cruiser' || 
+                       unit.type === 'battleship');
+
+  if (unit.type === 'army' && gameState.gridData[targetY][targetX] === 'water') {
+    return { success: false, error: "Armies cannot move on water" };
+  }
+
+  if (isNavalUnit && gameState.gridData[targetY][targetX] === 'land') {
+    return { success: false, error: "Naval units cannot move on land" };
+  }
+
   // Check for any unit at destination (friendly or enemy)
   const destinationUnit = gameState.units.find(u => u.x === targetX && u.y === targetY);
   
@@ -204,13 +217,13 @@ export function moveUnit(gameState: GameState, unitId: string, targetX: number, 
     if (destinationUnit.owner === unit.owner) {
       return { success: false, error: "Cannot move onto friendly unit" };
     } else {
-      // Combat with enemy unit
+      // Combat with enemy unit (terrain already validated)
       const combat = resolveCombat(unit, destinationUnit);
       
       if (combat.attackerWins) {
         // Remove defender
         gameState.units = gameState.units.filter(u => u.id !== destinationUnit.id);
-        // Move attacker
+        // Move attacker (terrain is valid)
         unit.x = targetX;
         unit.y = targetY;
         unit.moves -= distance;
@@ -231,19 +244,6 @@ export function moveUnit(gameState: GameState, unitId: string, targetX: number, 
       
       return { success: true, gameState, combat };
     }
-  }
-
-  // Check terrain constraints
-  const isNavalUnit = (unit.type === 'transport' || unit.type === 'destroyer' || 
-                       unit.type === 'submarine' || unit.type === 'cruiser' || 
-                       unit.type === 'battleship');
-
-  if (unit.type === 'army' && gameState.gridData[targetY][targetX] === 'water') {
-    return { success: false, error: "Armies cannot move on water" };
-  }
-
-  if (isNavalUnit && gameState.gridData[targetY][targetX] === 'land') {
-    return { success: false, error: "Naval units cannot move on land" };
   }
 
   // Valid move - move unit
@@ -339,23 +339,47 @@ export function performAITurn(gameState: GameState): GameState {
         const targetUnit = gameState.units.find(u => u.x === newX && u.y === newY);
         
         if (targetUnit && targetUnit.owner === 'human') {
-          // AI attacks
-          const combat = resolveCombat(unit, targetUnit);
-          if (combat.attackerWins) {
-            gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
-            unit.x = newX;
-            unit.y = newY;
-          } else {
-            gameState.units = gameState.units.filter(u => u.id !== unit.id);
+          // Check if AI can legally occupy the target tile first
+          const isNavalUnit = (unit.type === 'transport' || unit.type === 'destroyer' || 
+                               unit.type === 'submarine' || unit.type === 'cruiser' || 
+                               unit.type === 'battleship');
+          const canOccupy = (unit.type === 'army' && gameState.gridData[newY][newX] === 'land') ||
+                           (isNavalUnit && gameState.gridData[newY][newX] === 'water');
+          
+          if (canOccupy) {
+            // AI attacks
+            const combat = resolveCombat(unit, targetUnit);
+            if (combat.attackerWins) {
+              gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
+              unit.x = newX;
+              unit.y = newY;
+              
+              // Check for city capture after AI combat victory
+              const city = gameState.cities.find(c => c.x === newX && c.y === newY);
+              if (city && city.owner !== 'ai') {
+                city.owner = 'ai';
+              }
+            } else {
+              gameState.units = gameState.units.filter(u => u.id !== unit.id);
+            }
           }
         } else if (!targetUnit) {
-          // Check terrain constraints
+          // Check terrain constraints with proper naval unit logic
+          const isNavalUnit = (unit.type === 'transport' || unit.type === 'destroyer' || 
+                               unit.type === 'submarine' || unit.type === 'cruiser' || 
+                               unit.type === 'battleship');
           const canMove = (unit.type === 'army' && gameState.gridData[newY][newX] === 'land') ||
-                         (unit.type !== 'army' && gameState.gridData[newY][newX] === 'water');
+                         (isNavalUnit && gameState.gridData[newY][newX] === 'water');
           
           if (canMove) {
             unit.x = newX;
             unit.y = newY;
+            
+            // Check for city capture after AI peaceful move
+            const city = gameState.cities.find(c => c.x === newX && c.y === newY);
+            if (city && city.owner !== 'ai') {
+              city.owner = 'ai';
+            }
           }
         }
       }
