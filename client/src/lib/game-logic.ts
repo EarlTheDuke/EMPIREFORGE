@@ -296,17 +296,59 @@ export function produceUnit(gameState: GameState, cityId: string, unitType: Unit
     return { success: false, error: `Need at least ${cost} cities to produce ${unitType}` };
   }
 
-  // Check if tile is occupied
-  const existingUnit = gameState.units.find(u => u.x === city.x && u.y === city.y);
-  if (existingUnit) {
-    return { success: false, error: "City tile is occupied" };
+  // Check terrain compatibility and find valid placement
+  const isNavalUnit = (unitType === 'transport' || unitType === 'destroyer' || 
+                       unitType === 'submarine' || unitType === 'cruiser' || 
+                       unitType === 'battleship');
+  
+  let spawnX = city.x;
+  let spawnY = city.y;
+
+  if (isNavalUnit) {
+    // Naval units need water placement - check adjacent water tiles
+    const adjacentWaterTiles = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const checkX = city.x + dx;
+        const checkY = city.y + dy;
+        
+        if (checkX >= 0 && checkX < GRID_SIZE.width && 
+            checkY >= 0 && checkY < GRID_SIZE.height && 
+            gameState.gridData[checkY][checkX] === 'water') {
+          const isOccupied = gameState.units.find(u => u.x === checkX && u.y === checkY);
+          if (!isOccupied) {
+            adjacentWaterTiles.push({ x: checkX, y: checkY });
+          }
+        }
+      }
+    }
+    
+    if (adjacentWaterTiles.length === 0) {
+      return { success: false, error: "No available water tiles adjacent to city for naval unit" };
+    }
+    
+    // Use first available water tile
+    const waterTile = adjacentWaterTiles[0];
+    spawnX = waterTile.x;
+    spawnY = waterTile.y;
+  } else {
+    // Land units spawn at city (land tile)
+    if (gameState.gridData[city.y][city.x] !== 'land') {
+      return { success: false, error: "Cannot produce land units at water cities" };
+    }
+    
+    // Check if city tile is occupied
+    const existingUnit = gameState.units.find(u => u.x === city.x && u.y === city.y);
+    if (existingUnit) {
+      return { success: false, error: "City tile is occupied" };
+    }
   }
 
-  // Create new unit
+  // Create new unit at valid position
   const newUnit: Unit = {
     id: nanoid(),
-    x: city.x,
-    y: city.y,
+    x: spawnX,
+    y: spawnY,
     type: unitType,
     owner: 'human',
     moves: UNIT_TYPES[unitType].movement
