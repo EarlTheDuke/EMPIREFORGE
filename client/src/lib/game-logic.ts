@@ -2,12 +2,15 @@ import { type GameState, type Unit, type City, type UnitType, type CombatResult 
 import { nanoid } from "nanoid";
 
 export const UNIT_TYPES = {
-  army: { symbol: 'A', cost: 1, movement: 1, combat: 1 },
-  transport: { symbol: 'T', cost: 3, movement: 2, combat: 0 },
-  destroyer: { symbol: 'D', cost: 5, movement: 2, combat: 2 },
-  submarine: { symbol: 'S', cost: 8, movement: 3, combat: 3 },
-  cruiser: { symbol: 'C', cost: 12, movement: 2, combat: 4 },
-  battleship: { symbol: 'B', cost: 20, movement: 1, combat: 5 }
+  army: { symbol: 'A', cost: 1, movement: 1, combat: 1, productionTime: 1 },
+  transport: { symbol: 'T', cost: 3, movement: 2, combat: 0, productionTime: 2 },
+  destroyer: { symbol: 'D', cost: 5, movement: 2, combat: 2, productionTime: 3 },
+  fighter: { symbol: 'F', cost: 6, movement: 4, combat: 2, productionTime: 3 },
+  submarine: { symbol: 'S', cost: 8, movement: 3, combat: 3, productionTime: 4 },
+  cruiser: { symbol: 'C', cost: 12, movement: 2, combat: 4, productionTime: 5 },
+  carrier: { symbol: 'R', cost: 15, movement: 2, combat: 1, productionTime: 5 },
+  battleship: { symbol: 'B', cost: 20, movement: 1, combat: 5, productionTime: 6 },
+  nuclear: { symbol: 'N', cost: 30, movement: 1, combat: 8, productionTime: 8 }
 };
 
 export const GRID_SIZE = { width: 20, height: 15 };
@@ -313,7 +316,7 @@ function produceUnitForPlayer(gameState: GameState, cityId: string, unitType: Un
   // Check terrain compatibility and find valid placement
   const isNavalUnit = (unitType === 'transport' || unitType === 'destroyer' || 
                        unitType === 'submarine' || unitType === 'cruiser' || 
-                       unitType === 'battleship');
+                       unitType === 'battleship' || unitType === 'carrier');
   
   let spawnX = city.x;
   let spawnY = city.y;

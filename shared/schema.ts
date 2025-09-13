@@ -15,7 +15,7 @@ export const games = pgTable("games", {
   winner: varchar("winner"),
 });
 
-export const unitTypeSchema = z.enum(["army", "transport", "destroyer", "submarine", "cruiser", "battleship"]);
+export const unitTypeSchema = z.enum(["army", "transport", "destroyer", "submarine", "cruiser", "battleship", "fighter", "carrier", "nuclear"]);
 export const playerTypeSchema = z.enum(["human", "ai", "neutral"]);
 
 export const unitSchema = z.object({
