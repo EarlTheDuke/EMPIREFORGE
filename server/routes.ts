@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { gameStateSchema, moveUnitSchema, produceUnitSchema, type GameState } from "@shared/schema";
-import { generateInitialGameState, moveUnit, produceUnit, performAITurn, checkVictoryConditions } from "../client/src/lib/game-logic";
+import { generateInitialGameState, moveUnit, produceUnit, performAITurn, checkVictoryConditions, UNIT_TYPES } from "../client/src/lib/game-logic";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new game
@@ -125,15 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Reset human unit moves
       gameState.units.forEach(unit => {
         if (unit.owner === 'human') {
-          const unitTypes = {
-            army: { movement: 1 },
-            transport: { movement: 2 },
-            destroyer: { movement: 2 },
-            submarine: { movement: 3 },
-            cruiser: { movement: 2 },
-            battleship: { movement: 1 }
-          };
-          unit.moves = unitTypes[unit.type].movement;
+          unit.moves = UNIT_TYPES[unit.type].movement;
         }
       });
 

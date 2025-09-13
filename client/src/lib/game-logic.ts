@@ -180,60 +180,85 @@ export function moveUnit(gameState: GameState, unitId: string, targetX: number, 
     return { success: false, error: "Can only move your own units" };
   }
 
+  // Bounds check
+  if (targetX < 0 || targetX >= GRID_SIZE.width || targetY < 0 || targetY >= GRID_SIZE.height) {
+    return { success: false, error: "Target position is out of bounds" };
+  }
+
   const distance = Math.abs(unit.x - targetX) + Math.abs(unit.y - targetY);
-  const unitType = UNIT_TYPES[unit.type];
   
-  if (distance > unitType.movement || unit.moves <= 0) {
-    return { success: false, error: "Unit cannot move that far or has no moves left" };
+  // Prevent terrain hopping - restrict to single tile moves
+  if (distance > 1) {
+    return { success: false, error: "Can only move to adjacent tiles" };
   }
 
-  // Check for enemy unit at destination
-  const enemyUnit = gameState.units.find(u => u.x === targetX && u.y === targetY && u.owner !== unit.owner);
-  if (enemyUnit) {
-    const combat = resolveCombat(unit, enemyUnit);
-    
-    if (combat.attackerWins) {
-      // Remove defender
-      gameState.units = gameState.units.filter(u => u.id !== enemyUnit.id);
-      // Move attacker
-      unit.x = targetX;
-      unit.y = targetY;
-      unit.moves--;
-      
-      // Reveal area around new position after combat victory
-      revealArea(gameState.fogOfWar, targetX, targetY, 1);
-      
-      // Check for city capture
-      const city = gameState.cities.find(c => c.x === targetX && c.y === targetY);
-      if (city && city.owner !== unit.owner) {
-        city.owner = unit.owner;
-        combat.capturedCity = city;
-      }
+  // Check if unit has enough movement points
+  if (distance > unit.moves) {
+    return { success: false, error: "Unit has no moves left" };
+  }
+
+  // Check for any unit at destination (friendly or enemy)
+  const destinationUnit = gameState.units.find(u => u.x === targetX && u.y === targetY);
+  
+  if (destinationUnit) {
+    if (destinationUnit.owner === unit.owner) {
+      return { success: false, error: "Cannot move onto friendly unit" };
     } else {
-      // Remove attacker
-      gameState.units = gameState.units.filter(u => u.id !== unit.id);
+      // Combat with enemy unit
+      const combat = resolveCombat(unit, destinationUnit);
+      
+      if (combat.attackerWins) {
+        // Remove defender
+        gameState.units = gameState.units.filter(u => u.id !== destinationUnit.id);
+        // Move attacker
+        unit.x = targetX;
+        unit.y = targetY;
+        unit.moves -= distance;
+        
+        // Reveal area around new position after combat victory
+        revealArea(gameState.fogOfWar, targetX, targetY, 1);
+        
+        // Check for city capture after combat
+        const city = gameState.cities.find(c => c.x === targetX && c.y === targetY);
+        if (city && city.owner !== unit.owner) {
+          city.owner = unit.owner;
+          combat.capturedCity = city;
+        }
+      } else {
+        // Remove attacker
+        gameState.units = gameState.units.filter(u => u.id !== unit.id);
+      }
+      
+      return { success: true, gameState, combat };
     }
-    
-    return { success: true, gameState, combat };
   }
 
-  // Valid move - check terrain constraints
+  // Check terrain constraints
+  const isNavalUnit = (unit.type === 'transport' || unit.type === 'destroyer' || 
+                       unit.type === 'submarine' || unit.type === 'cruiser' || 
+                       unit.type === 'battleship');
+
   if (unit.type === 'army' && gameState.gridData[targetY][targetX] === 'water') {
     return { success: false, error: "Armies cannot move on water" };
   }
 
-  if ((unit.type === 'destroyer' || unit.type === 'submarine' || unit.type === 'cruiser' || unit.type === 'battleship') 
-      && gameState.gridData[targetY][targetX] === 'land') {
+  if (isNavalUnit && gameState.gridData[targetY][targetX] === 'land') {
     return { success: false, error: "Naval units cannot move on land" };
   }
 
-  // Move unit
+  // Valid move - move unit
   unit.x = targetX;
   unit.y = targetY;
-  unit.moves--;
+  unit.moves -= distance;
   
   // Reveal area around new position
   revealArea(gameState.fogOfWar, targetX, targetY, 1);
+
+  // Check for city capture after peaceful move
+  const city = gameState.cities.find(c => c.x === targetX && c.y === targetY);
+  if (city && city.owner !== unit.owner) {
+    city.owner = unit.owner;
+  }
 
   return { success: true, gameState };
 }
