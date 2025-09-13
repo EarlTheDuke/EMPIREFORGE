@@ -50,6 +50,7 @@ export default function GameBoard({ gameState, selectedUnit, selectedCity, onCel
         {!isHidden && unit && (
           <div 
             className="unit-icon"
+            data-testid={`unit-${unit.owner}-${unit.type}-${x}-${y}`}
             style={{
               color: unit.owner === 'ai' ? '#ef4444' : 'var(--terminal)'
             }}

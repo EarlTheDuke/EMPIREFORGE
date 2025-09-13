@@ -200,6 +200,9 @@ export function moveUnit(gameState: GameState, unitId: string, targetX: number, 
       unit.y = targetY;
       unit.moves--;
       
+      // Reveal area around new position after combat victory
+      revealArea(gameState.fogOfWar, targetX, targetY, 1);
+      
       // Check for city capture
       const city = gameState.cities.find(c => c.x === targetX && c.y === targetY);
       if (city && city.owner !== unit.owner) {
