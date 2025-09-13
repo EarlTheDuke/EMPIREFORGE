@@ -36,6 +36,32 @@ export default function ProductionPanel({ selectedCity, onProduceUnit, onSetDefa
             {selectedCity ? `(${selectedCity.x},${selectedCity.y})` : 'None'}
           </span>
         </div>
+        {/* Current Production Status */}
+        {selectedCity?.currentProduction && (
+          <div className="bg-secondary/20 p-3 rounded mb-4">
+            <div className="text-sm font-medium text-secondary mb-1">Currently Producing:</div>
+            <div className="flex items-center justify-between">
+              <span className="text-primary font-bold">
+                {selectedCity.currentProduction.toUpperCase()}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {selectedCity.productionProgress || 0} / {UNIT_TYPES[selectedCity.currentProduction].productionTime} turns
+              </span>
+            </div>
+            <div className="w-full bg-background rounded-full h-2 mt-2">
+              <div 
+                className="bg-primary h-2 rounded-full transition-all duration-300"
+                style={{ 
+                  width: `${((selectedCity.productionProgress || 0) / UNIT_TYPES[selectedCity.currentProduction].productionTime) * 100}%` 
+                }}
+              />
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {UNIT_TYPES[selectedCity.currentProduction].productionTime - (selectedCity.productionProgress || 0)} turns remaining
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2 mt-4">
           {(Object.entries(UNIT_TYPES) as [UnitType, any][]).map(([unitType, stats]) => (
             <button
@@ -43,15 +69,20 @@ export default function ProductionPanel({ selectedCity, onProduceUnit, onSetDefa
               data-testid={`produce-${unitType}`}
               className="retro-button p-2 text-xs rounded disabled:opacity-50"
               data-unit={unitType}
-              disabled={!selectedCity || !canAfford(unitType) || isProducing}
+              disabled={!selectedCity || !canAfford(unitType) || isProducing || !!selectedCity?.currentProduction}
               onClick={() => handleProduceUnit(unitType)}
             >
-              {unitType.toUpperCase()} ({stats.cost})
+              <div className="text-center">
+                <div>{unitType.toUpperCase()}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {stats.productionTime}T • {stats.cost}C
+                </div>
+              </div>
             </button>
           ))}
         </div>
         <div className="text-xs text-muted-foreground mt-2">
-          Production cost = number of cities required
+          T = turns to produce, C = cities required
         </div>
         
         {/* Production Queue Management */}
