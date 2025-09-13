@@ -16,8 +16,9 @@ export function useGameState(gameId: string | null) {
       const response = await apiRequest('POST', '/api/games');
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/games'] });
+      queryClient.setQueryData(['/api/games', data.id], data);
     },
   });
 
@@ -73,5 +74,6 @@ export function useGameState(gameId: string | null) {
     isProducingUnit: produceUnitMutation.isPending,
     isEndingTurn: endTurnMutation.isPending,
     moveResult: moveUnitMutation.data as { game: Game; combat?: CombatResult } | undefined,
+    createdGame: createGameMutation.data as Game | undefined,
   };
 }

@@ -30,7 +30,8 @@ export default function EmpireGame() {
     isMovingUnit,
     isProducingUnit,
     isEndingTurn,
-    moveResult
+    moveResult,
+    createdGame
   } = useGameState(gameId);
 
   // Create game on mount
@@ -42,11 +43,11 @@ export default function EmpireGame() {
 
   // Handle game creation
   useEffect(() => {
-    if (!isCreatingGame && !gameId && game) {
-      setGameId(game.id);
+    if (!isCreatingGame && !gameId && createdGame) {
+      setGameId(createdGame.id);
       setMoveHistory(['Turn 1: Game begins']);
     }
-  }, [isCreatingGame, gameId, game]);
+  }, [isCreatingGame, gameId, createdGame]);
 
   // Handle move result with combat
   useEffect(() => {
