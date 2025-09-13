@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { gameStateSchema, moveUnitSchema, produceUnitSchema, setDefaultProductionSchema, addToQueueSchema, removeFromQueueSchema, type GameState } from "@shared/schema";
-import { generateInitialGameState, moveUnit, produceUnit, performAITurn, checkVictoryConditions, processAutomaticProduction, UNIT_TYPES } from "../client/src/lib/game-logic";
+import { generateInitialGameState, moveUnit, produceUnit, startProduction, performAITurn, checkVictoryConditions, processAutomaticProduction, UNIT_TYPES } from "../client/src/lib/game-logic";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new game
@@ -93,15 +93,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         winner: game.winner as any,
       };
 
-      console.log('🎯 Calling produceUnit with:', { cityId: parseResult.data.cityId, unitType: parseResult.data.unitType });
-      const result = produceUnit(gameState, parseResult.data.cityId, parseResult.data.unitType);
-      console.log('🎯 produceUnit result:', result);
+      console.log('🎯 Calling startProduction with:', { cityId: parseResult.data.cityId, unitType: parseResult.data.unitType });
+      const result = startProduction(gameState, parseResult.data.cityId, parseResult.data.unitType);
+      console.log('🎯 startProduction result:', result);
       
       if (!result.success) {
-        console.log('❌ produceUnit failed:', result.error);
+        console.log('❌ startProduction failed:', result.error);
         return res.status(400).json({ message: result.error });
       }
-      console.log('✅ produceUnit succeeded, updating game');
+      console.log('✅ startProduction succeeded, updating game');
 
       const updatedGame = await storage.updateGame(req.params.id, result.gameState!);
       res.json(updatedGame);

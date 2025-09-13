@@ -35,6 +35,8 @@ export const citySchema = z.object({
   production: z.number(),
   defaultProduction: unitTypeSchema.optional(),
   productionQueue: z.array(unitTypeSchema).optional(),
+  currentProduction: unitTypeSchema.optional(),
+  productionProgress: z.number().default(0),
 });
 
 export const gameStateSchema = z.object({

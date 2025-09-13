@@ -102,7 +102,8 @@ function placeCities(gridData: ('water' | 'land')[][]): City[] {
       x: tile.x,
       y: tile.y,
       owner: i === 0 ? 'human' : (i === 1 ? 'ai' : 'neutral'),
-      production: 1
+      production: 1,
+      productionProgress: 0
     });
   }
 
@@ -560,44 +561,130 @@ export function performAITurn(gameState: GameState): GameState {
   return gameState;
 }
 
+// Start production of a unit (for manual production buttons)
+export function startProduction(gameState: GameState, cityId: string, unitType: UnitType): {
+  success: boolean;
+  error?: string;
+  gameState?: GameState;
+} {
+  const city = gameState.cities.find(c => c.id === cityId);
+  if (!city) {
+    return { success: false, error: "City not found" };
+  }
+
+  if (city.owner !== 'human') {
+    return { success: false, error: "Can only produce units in your own cities" };
+  }
+
+  const cost = UNIT_TYPES[unitType].cost;
+  const ownerCities = gameState.cities.filter(c => c.owner === 'human').length;
+  
+  if (ownerCities < cost) {
+    return { success: false, error: `Need at least ${cost} cities to produce ${unitType}` };
+  }
+
+  // Check if city is already producing something
+  if (city.currentProduction) {
+    return { success: false, error: "City is already producing a unit" };
+  }
+
+  // Start production
+  city.currentProduction = unitType;
+  city.productionProgress = 0;
+
+  return { success: true, gameState };
+}
+
 export function processAutomaticProduction(gameState: GameState): { gameState: GameState; events: string[] } {
   const events: string[] = [];
   const humanCities = gameState.cities.filter(c => c.owner === 'human');
   
   // Process production for each human city
   humanCities.forEach(city => {
-    let unitToProduceLookup: UnitType | null = null;
-    let removeFromQueue = false;
-    
-    // Check production queue first, then default production
-    if (city.productionQueue && city.productionQueue.length > 0) {
-      unitToProduceLookup = city.productionQueue[0];
-      removeFromQueue = true;
-    } else if (city.defaultProduction) {
-      unitToProduceLookup = city.defaultProduction;
-    }
-    
-    if (unitToProduceLookup) {
-      // Try to produce the unit
-      const result = produceUnitForPlayer(gameState, city.id, unitToProduceLookup, 'human');
+    // Advance production progress for cities currently producing
+    if (city.currentProduction) {
+      city.productionProgress = (city.productionProgress || 0) + 1;
+      const requiredTime = UNIT_TYPES[city.currentProduction].productionTime;
       
-      if (result.success && result.gameState) {
-        // Update game state with new unit
-        gameState = result.gameState;
+      // Check if production is complete
+      if (city.productionProgress >= requiredTime) {
+        // Try to complete the unit
+        const result = produceUnitForPlayer(gameState, city.id, city.currentProduction, 'human');
         
-        // Remove from queue if it was consumed from queue
-        if (removeFromQueue) {
-          const cityIndex = gameState.cities.findIndex(c => c.id === city.id);
-          if (cityIndex !== -1 && gameState.cities[cityIndex].productionQueue) {
-            gameState.cities[cityIndex].productionQueue = gameState.cities[cityIndex].productionQueue!.slice(1);
+        if (result.success && result.gameState) {
+          // Update game state with new unit
+          gameState = result.gameState;
+          
+          // Add event for game history
+          events.push(`Turn ${gameState.turn}: ${city.currentProduction.toUpperCase()} completed at (${city.x},${city.y}) after ${requiredTime} turns`);
+          
+          // Clear current production
+          city.currentProduction = undefined;
+          city.productionProgress = 0;
+          
+          // Start next production if available
+          if (city.productionQueue && city.productionQueue.length > 0) {
+            const nextUnit = city.productionQueue[0];
+            const nextCost = UNIT_TYPES[nextUnit].cost;
+            const ownerCities = gameState.cities.filter(c => c.owner === 'human').length;
+            
+            if (ownerCities >= nextCost) {
+              city.currentProduction = nextUnit;
+              city.productionProgress = 0;
+              // Remove from queue
+              city.productionQueue = city.productionQueue.slice(1);
+              events.push(`Turn ${gameState.turn}: Started production of ${nextUnit.toUpperCase()} at (${city.x},${city.y})`);
+            }
+          } else if (city.defaultProduction) {
+            // Start default production
+            const defaultCost = UNIT_TYPES[city.defaultProduction].cost;
+            const ownerCities = gameState.cities.filter(c => c.owner === 'human').length;
+            
+            if (ownerCities >= defaultCost) {
+              city.currentProduction = city.defaultProduction;
+              city.productionProgress = 0;
+              events.push(`Turn ${gameState.turn}: Started default production of ${city.defaultProduction.toUpperCase()} at (${city.x},${city.y})`);
+            }
           }
+        } else {
+          // Production failed (no space, etc.), but keep trying next turn
+          events.push(`Turn ${gameState.turn}: ${city.currentProduction.toUpperCase()} production blocked at (${city.x},${city.y}) - no space available`);
         }
-        
-        // Add event for game history
-        events.push(`Turn ${gameState.turn}: ${unitToProduceLookup.toUpperCase()} automatically produced at (${city.x},${city.y})`);
+      } else {
+        // Production in progress
+        const remaining = requiredTime - city.productionProgress;
+        events.push(`Turn ${gameState.turn}: ${city.currentProduction.toUpperCase()} production continues at (${city.x},${city.y}) - ${remaining} turns remaining`);
       }
-      // Note: If production fails (not enough cities, no space, etc.), we silently continue
-      // The player can manually produce later if needed
+    } else {
+      // No current production, check if we should start something
+      let unitToProduceLookup: UnitType | null = null;
+      let removeFromQueue = false;
+      
+      // Check production queue first, then default production
+      if (city.productionQueue && city.productionQueue.length > 0) {
+        unitToProduceLookup = city.productionQueue[0];
+        removeFromQueue = true;
+      } else if (city.defaultProduction) {
+        unitToProduceLookup = city.defaultProduction;
+      }
+      
+      if (unitToProduceLookup) {
+        const cost = UNIT_TYPES[unitToProduceLookup].cost;
+        const ownerCities = gameState.cities.filter(c => c.owner === 'human').length;
+        
+        if (ownerCities >= cost) {
+          // Start production
+          city.currentProduction = unitToProduceLookup;
+          city.productionProgress = 0;
+          
+          // Remove from queue if it was consumed from queue
+          if (removeFromQueue && city.productionQueue) {
+            city.productionQueue = city.productionQueue.slice(1);
+          }
+          
+          events.push(`Turn ${gameState.turn}: Started production of ${unitToProduceLookup.toUpperCase()} at (${city.x},${city.y})`);
+        }
+      }
     }
   });
   
