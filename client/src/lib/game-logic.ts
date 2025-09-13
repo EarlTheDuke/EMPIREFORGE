@@ -369,7 +369,13 @@ export function performAITurn(gameState: GameState): GameState {
     ];
     
     if (humanTargets.length > 0) {
-      const target = humanTargets[0];
+      // Find nearest human target using Manhattan distance
+      const target = humanTargets.reduce((nearest, candidate) => {
+        const nearestDistance = Math.abs(nearest.x - unit.x) + Math.abs(nearest.y - unit.y);
+        const candidateDistance = Math.abs(candidate.x - unit.x) + Math.abs(candidate.y - unit.y);
+        return candidateDistance < nearestDistance ? candidate : nearest;
+      });
+      
       const dx = Math.sign(target.x - unit.x);
       const dy = Math.sign(target.y - unit.y);
       
