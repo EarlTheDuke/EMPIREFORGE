@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function EmpireGame() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
-  const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [gameHistory, setGameHistory] = useState<string[]>([]);
   const [showCombat, setShowCombat] = useState(false);
   const [currentCombat, setCurrentCombat] = useState<CombatResult | null>(null);
@@ -120,12 +120,15 @@ export default function EmpireGame() {
     winner: game.winner as any,
   };
 
+  // Derive selectedCity from current game state to ensure fresh data
+  const selectedCity = selectedCityId ? gameState.cities.find(c => c.id === selectedCityId) || null : null;
+
   const handleCellClick = (x: number, y: number) => {
     console.log(`Cell clicked at (${x}, ${y})`);
     
     // Clear previous selections
     setSelectedUnit(null);
-    setSelectedCity(null);
+    setSelectedCityId(null);
 
     // Check for unit selection
     const unit = gameState.units.find(u => u.x === x && u.y === y && u.owner === 'human');
@@ -136,7 +139,7 @@ export default function EmpireGame() {
 
     if (city) {
       console.log(`Selecting city:`, city);
-      setSelectedCity(city);
+      setSelectedCityId(city.id);
     } else if (unit) {
       console.log(`Selecting unit:`, unit);
       setSelectedUnit(unit);
@@ -172,7 +175,7 @@ export default function EmpireGame() {
     // Reset unit moves will be handled server-side
     // Production events will be handled by endTurnResult useEffect
     setSelectedUnit(null);
-    setSelectedCity(null);
+    setSelectedCityId(null);
   };
 
   const humanCities = gameState.cities.filter(c => c.owner === 'human');

@@ -103,7 +103,8 @@ function placeCities(gridData: ('water' | 'land')[][]): City[] {
       y: tile.y,
       owner: i === 0 ? 'human' : (i === 1 ? 'ai' : 'neutral'),
       production: 1,
-      productionProgress: 0
+      productionProgress: 0,
+      currentProduction: undefined
     });
   }
 
