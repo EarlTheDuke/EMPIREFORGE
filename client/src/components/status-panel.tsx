@@ -1,14 +1,17 @@
+import { useState } from 'react';
 import { type GameState, type Unit } from '@shared/schema';
 import { UNIT_TYPES } from '@/lib/game-logic';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface StatusPanelProps {
   gameState: GameState;
   selectedUnit: Unit | null;
-  combatLog: string[];
-  moveHistory: string[];
+  gameHistory: string[];
 }
 
-export default function StatusPanel({ gameState, selectedUnit, combatLog, moveHistory }: StatusPanelProps) {
+export default function StatusPanel({ gameState, selectedUnit, gameHistory }: StatusPanelProps) {
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const humanCities = gameState.cities.filter(c => c.owner === 'human');
   const humanUnits = gameState.units.filter(u => u.owner === 'human');
   const humanArmies = humanUnits.filter(u => u.type === 'army');
@@ -73,33 +76,30 @@ export default function StatusPanel({ gameState, selectedUnit, combatLog, moveHi
         </div>
       </div>
 
-      {/* Combat Log */}
-      <div className="retro-panel p-4 rounded">
-        <h3 className="text-lg font-bold text-terminal mb-3">COMBAT LOG</h3>
-        <div data-testid="combat-log" className="text-xs space-y-1 max-h-32 overflow-y-auto">
-          {combatLog.length > 0 ? (
-            combatLog.map((entry, index) => (
-              <div key={index}>{entry}</div>
-            ))
-          ) : (
-            <div className="text-muted-foreground">Game started</div>
-          )}
+      {/* Game History */}
+      <Collapsible open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+        <div className="retro-panel p-4 rounded">
+          <CollapsibleTrigger className="w-full flex items-center justify-between text-left" data-testid="toggle-history">
+            <h3 className="text-lg font-bold text-terminal">GAME HISTORY</h3>
+            <span className="text-terminal hover:text-secondary">
+              {isHistoryOpen ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+            </span>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div data-testid="game-history" className="text-xs space-y-1 max-h-40 overflow-y-auto mt-3 pr-2">
+              {gameHistory.length > 0 ? (
+                gameHistory.map((entry: string, index: number) => (
+                  <div key={index} className="border-l-2 border-secondary/30 pl-2 py-1">
+                    {entry}
+                  </div>
+                ))
+              ) : (
+                <div className="text-muted-foreground">Turn 1: Game begins</div>
+              )}
+            </div>
+          </CollapsibleContent>
         </div>
-      </div>
-
-      {/* Move History */}
-      <div className="retro-panel p-4 rounded">
-        <h3 className="text-lg font-bold text-terminal mb-3">MOVE HISTORY</h3>
-        <div data-testid="move-history" className="text-xs space-y-1 max-h-32 overflow-y-auto">
-          {moveHistory.length > 0 ? (
-            moveHistory.map((entry, index) => (
-              <div key={index}>{entry}</div>
-            ))
-          ) : (
-            <div className="text-muted-foreground">Turn 1: Game begins</div>
-          )}
-        </div>
-      </div>
+      </Collapsible>
     </div>
   );
 }

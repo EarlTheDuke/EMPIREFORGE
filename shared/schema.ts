@@ -33,6 +33,8 @@ export const citySchema = z.object({
   y: z.number(),
   owner: playerTypeSchema,
   production: z.number(),
+  defaultProduction: unitTypeSchema.optional(),
+  productionQueue: z.array(unitTypeSchema).optional(),
 });
 
 export const gameStateSchema = z.object({
@@ -70,6 +72,24 @@ export const produceUnitSchema = z.object({
   unitType: unitTypeSchema,
 });
 
+export const setDefaultProductionSchema = z.object({
+  gameId: z.string(),
+  cityId: z.string(),
+  unitType: unitTypeSchema.nullable(),
+});
+
+export const addToQueueSchema = z.object({
+  gameId: z.string(),
+  cityId: z.string(),
+  unitType: unitTypeSchema,
+});
+
+export const removeFromQueueSchema = z.object({
+  gameId: z.string(),
+  cityId: z.string(),
+  index: z.number(),
+});
+
 export type Game = typeof games.$inferSelect;
 export type InsertGame = z.infer<typeof insertGameSchema>;
 export type GameState = z.infer<typeof gameStateSchema>;
@@ -80,3 +100,6 @@ export type PlayerType = z.infer<typeof playerTypeSchema>;
 export type CombatResult = z.infer<typeof combatResultSchema>;
 export type MoveUnitRequest = z.infer<typeof moveUnitSchema>;
 export type ProduceUnitRequest = z.infer<typeof produceUnitSchema>;
+export type SetDefaultProductionRequest = z.infer<typeof setDefaultProductionSchema>;
+export type AddToQueueRequest = z.infer<typeof addToQueueSchema>;
+export type RemoveFromQueueRequest = z.infer<typeof removeFromQueueSchema>;

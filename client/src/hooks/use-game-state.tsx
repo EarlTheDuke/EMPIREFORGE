@@ -73,7 +73,7 @@ export function useGameState(gameId: string | null) {
     isMovingUnit: moveUnitMutation.isPending,
     isProducingUnit: produceUnitMutation.isPending,
     isEndingTurn: endTurnMutation.isPending,
-    moveResult: moveUnitMutation.data as { game: Game; combat?: CombatResult } | undefined,
+    moveResult: moveUnitMutation.data as { game: Game; combat?: CombatResult; events?: string[] } | undefined,
     createdGame: createGameMutation.data as Game | undefined,
   };
 }

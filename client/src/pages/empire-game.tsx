@@ -11,8 +11,7 @@ export default function EmpireGame() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
-  const [combatLog, setCombatLog] = useState<string[]>([]);
-  const [moveHistory, setMoveHistory] = useState<string[]>([]);
+  const [gameHistory, setGameHistory] = useState<string[]>([]);
   const [showCombat, setShowCombat] = useState(false);
   const [currentCombat, setCurrentCombat] = useState<CombatResult | null>(null);
 
@@ -45,27 +44,25 @@ export default function EmpireGame() {
   useEffect(() => {
     if (!isCreatingGame && !gameId && createdGame) {
       setGameId(createdGame.id);
-      setMoveHistory(['Turn 1: Game begins']);
+      setGameHistory(['Turn 1: Game begins']);
     }
   }, [isCreatingGame, gameId, createdGame]);
 
-  // Handle move result with combat
+  // Handle move result with combat and events
   useEffect(() => {
-    if (moveResult?.combat) {
-      setCurrentCombat(moveResult.combat);
-      setShowCombat(true);
+    if (moveResult) {
+      // Add detailed events from the enhanced game logic
+      if (moveResult.events && moveResult.events.length > 0) {
+        setGameHistory(prev => [...prev, ...moveResult.events!]);
+      }
       
-      const combatMessage = moveResult.combat.attackerWins 
-        ? `${moveResult.combat.attackerUnit.type} defeats ${moveResult.combat.defenderUnit.type}`
-        : `${moveResult.combat.defenderUnit.type} defeats ${moveResult.combat.attackerUnit.type}`;
-      
-      setCombatLog(prev => [...prev, `Turn ${game?.turn}: ${combatMessage}`]);
-      
-      if (moveResult.combat.capturedCity) {
-        setCombatLog(prev => [...prev, `Turn ${game?.turn}: City captured!`]);
+      // Handle combat modal display
+      if (moveResult.combat) {
+        setCurrentCombat(moveResult.combat);
+        setShowCombat(true);
       }
     }
-  }, [moveResult, game?.turn]);
+  }, [moveResult]);
 
   // Handle victory conditions
   useEffect(() => {
@@ -107,6 +104,8 @@ export default function EmpireGame() {
   };
 
   const handleCellClick = (x: number, y: number) => {
+    console.log(`Cell clicked at (${x}, ${y})`);
+    
     // Clear previous selections
     setSelectedUnit(null);
     setSelectedCity(null);
@@ -115,14 +114,19 @@ export default function EmpireGame() {
     const unit = gameState.units.find(u => u.x === x && u.y === y && u.owner === 'human');
     const city = gameState.cities.find(c => c.x === x && c.y === y && c.owner === 'human');
 
-    if (unit) {
-      setSelectedUnit(unit);
-    } else if (city) {
+    console.log(`Found unit:`, unit);
+    console.log(`Found city:`, city);
+
+    if (city) {
+      console.log(`Selecting city:`, city);
       setSelectedCity(city);
+    } else if (unit) {
+      console.log(`Selecting unit:`, unit);
+      setSelectedUnit(unit);
     } else if (selectedUnit) {
-      // Try to move selected unit
+      // Try to move selected unit (events will be handled by the enhanced API response)
+      console.log(`Moving unit ${selectedUnit.id} to (${x}, ${y})`);
       moveUnit({ unitId: selectedUnit.id, targetX: x, targetY: y });
-      setMoveHistory(prev => [...prev, `${selectedUnit.type} moved to (${x},${y})`]);
     }
   };
 
@@ -130,13 +134,28 @@ export default function EmpireGame() {
     produceUnit({ cityId, unitType });
     const city = gameState.cities.find(c => c.id === cityId);
     if (city) {
-      setCombatLog(prev => [...prev, `Turn ${gameState.turn}: ${unitType} produced at (${city.x},${city.y})`]);
+      setGameHistory(prev => [...prev, `Turn ${gameState.turn}: ${unitType} produced at (${city.x},${city.y})`]);
     }
+  };
+
+  const handleSetDefaultProduction = (cityId: string, unitType: UnitType | null) => {
+    // TODO: Implement API call to set default production
+    console.log('Set default production:', cityId, unitType);
+  };
+
+  const handleAddToQueue = (cityId: string, unitType: UnitType) => {
+    // TODO: Implement API call to add unit to production queue
+    console.log('Add to queue:', cityId, unitType);
+  };
+
+  const handleRemoveFromQueue = (cityId: string, index: number) => {
+    // TODO: Implement API call to remove unit from queue
+    console.log('Remove from queue:', cityId, index);
   };
 
   const handleEndTurn = () => {
     endTurn();
-    setMoveHistory(prev => [...prev, `Turn ${gameState.turn + 1} begins`]);
+    setGameHistory(prev => [...prev, `Turn ${gameState.turn + 1} begins`]);
     // Reset unit moves will be handled server-side
     setSelectedUnit(null);
     setSelectedCity(null);
@@ -184,6 +203,9 @@ export default function EmpireGame() {
           <ProductionPanel
             selectedCity={selectedCity}
             onProduceUnit={handleProduceUnit}
+            onSetDefaultProduction={handleSetDefaultProduction}
+            onAddToQueue={handleAddToQueue}
+            onRemoveFromQueue={handleRemoveFromQueue}
             isProducing={isProducingUnit}
             humanCities={humanCities}
           />
@@ -203,8 +225,7 @@ export default function EmpireGame() {
         <StatusPanel
           gameState={gameState}
           selectedUnit={selectedUnit}
-          combatLog={combatLog}
-          moveHistory={moveHistory}
+          gameHistory={gameHistory}
         />
       </div>
 

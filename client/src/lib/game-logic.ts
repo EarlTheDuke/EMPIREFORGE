@@ -170,7 +170,9 @@ export function moveUnit(gameState: GameState, unitId: string, targetX: number, 
   error?: string;
   gameState?: GameState;
   combat?: CombatResult;
+  events?: string[];
 } {
+  const events: string[] = [];
   const unit = gameState.units.find(u => u.id === unitId);
   if (!unit) {
     return { success: false, error: "Unit not found" };
@@ -220,6 +222,8 @@ export function moveUnit(gameState: GameState, unitId: string, targetX: number, 
       // Combat with enemy unit (terrain already validated)
       const combat = resolveCombat(unit, destinationUnit);
       
+      events.push(`Turn ${gameState.turn}: ${unit.type} (Combat: ${UNIT_TYPES[unit.type].combat}) attacks ${destinationUnit.type} (Combat: ${UNIT_TYPES[destinationUnit.type].combat}) at (${targetX},${targetY})`);
+      
       if (combat.attackerWins) {
         // Remove defender
         gameState.units = gameState.units.filter(u => u.id !== destinationUnit.id);
@@ -228,21 +232,26 @@ export function moveUnit(gameState: GameState, unitId: string, targetX: number, 
         unit.y = targetY;
         unit.moves -= distance;
         
+        events.push(`Turn ${gameState.turn}: ${unit.type} defeats ${destinationUnit.type} in combat!`);
+        
         // Reveal area around new position after combat victory
         revealArea(gameState.fogOfWar, targetX, targetY, 1);
+        events.push(`Turn ${gameState.turn}: Fog of war cleared around (${targetX},${targetY})`);
         
         // Check for city capture after combat
         const city = gameState.cities.find(c => c.x === targetX && c.y === targetY);
         if (city && city.owner !== unit.owner) {
           city.owner = unit.owner;
           combat.capturedCity = city;
+          events.push(`Turn ${gameState.turn}: ${unit.owner} captures city at (${targetX},${targetY})!`);
         }
       } else {
         // Remove attacker
         gameState.units = gameState.units.filter(u => u.id !== unit.id);
+        events.push(`Turn ${gameState.turn}: ${destinationUnit.type} defeats attacking ${unit.type}!`);
       }
       
-      return { success: true, gameState, combat };
+      return { success: true, gameState, combat, events };
     }
   }
 
@@ -251,16 +260,20 @@ export function moveUnit(gameState: GameState, unitId: string, targetX: number, 
   unit.y = targetY;
   unit.moves -= distance;
   
+  events.push(`Turn ${gameState.turn}: ${unit.type} moves to (${targetX},${targetY})`);
+  
   // Reveal area around new position
   revealArea(gameState.fogOfWar, targetX, targetY, 1);
+  events.push(`Turn ${gameState.turn}: Fog of war cleared around (${targetX},${targetY})`);
 
   // Check for city capture after peaceful move
   const city = gameState.cities.find(c => c.x === targetX && c.y === targetY);
   if (city && city.owner !== unit.owner) {
     city.owner = unit.owner;
+    events.push(`Turn ${gameState.turn}: ${unit.owner} captures undefended city at (${targetX},${targetY})!`);
   }
 
-  return { success: true, gameState };
+  return { success: true, gameState, events };
 }
 
 function resolveCombat(attacker: Unit, defender: Unit): CombatResult {

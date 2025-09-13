@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { gameStateSchema, moveUnitSchema, produceUnitSchema, type GameState } from "@shared/schema";
+import { gameStateSchema, moveUnitSchema, produceUnitSchema, setDefaultProductionSchema, addToQueueSchema, removeFromQueueSchema, type GameState } from "@shared/schema";
 import { generateInitialGameState, moveUnit, produceUnit, performAITurn, checkVictoryConditions, UNIT_TYPES } from "../client/src/lib/game-logic";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -60,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedGame = await storage.updateGame(req.params.id, result.gameState!);
-      res.json({ game: updatedGame, combat: result.combat });
+      res.json({ game: updatedGame, combat: result.combat, events: result.events || [] });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -97,6 +97,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedGame = await storage.updateGame(req.params.id, result.gameState!);
+      res.json(updatedGame);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Set default production
+  app.post("/api/games/:id/set-default-production", async (req, res) => {
+    try {
+      const parseResult = setDefaultProductionSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid default production data", errors: parseResult.error.errors });
+      }
+
+      const updatedGame = await storage.setDefaultProduction(
+        req.params.id,
+        parseResult.data.cityId,
+        parseResult.data.unitType
+      );
+
+      if (!updatedGame) {
+        return res.status(404).json({ message: "Game or city not found" });
+      }
+
+      res.json(updatedGame);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Add to production queue
+  app.post("/api/games/:id/add-to-queue", async (req, res) => {
+    try {
+      const parseResult = addToQueueSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid queue data", errors: parseResult.error.errors });
+      }
+
+      const updatedGame = await storage.addToQueue(
+        req.params.id,
+        parseResult.data.cityId,
+        parseResult.data.unitType
+      );
+
+      if (!updatedGame) {
+        return res.status(404).json({ message: "Game or city not found" });
+      }
+
+      res.json(updatedGame);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Remove from production queue
+  app.post("/api/games/:id/remove-from-queue", async (req, res) => {
+    try {
+      const parseResult = removeFromQueueSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid remove data", errors: parseResult.error.errors });
+      }
+
+      const updatedGame = await storage.removeFromQueue(
+        req.params.id,
+        parseResult.data.cityId,
+        parseResult.data.index
+      );
+
+      if (!updatedGame) {
+        return res.status(404).json({ message: "Game, city not found, or invalid index" });
+      }
+
       res.json(updatedGame);
     } catch (error: any) {
       res.status(500).json({ message: error.message });

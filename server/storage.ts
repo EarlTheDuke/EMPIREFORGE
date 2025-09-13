@@ -1,4 +1,4 @@
-import { type Game, type InsertGame, type GameState, type Unit, type City } from "@shared/schema";
+import { type Game, type InsertGame, type GameState, type Unit, type City, type UnitType } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -11,6 +11,11 @@ export interface IStorage {
   getGame(id: string): Promise<Game | undefined>;
   updateGame(id: string, gameState: GameState): Promise<Game | undefined>;
   deleteGame(id: string): Promise<boolean>;
+  
+  // Production queue methods
+  setDefaultProduction(gameId: string, cityId: string, unitType: UnitType | null): Promise<Game | undefined>;
+  addToQueue(gameId: string, cityId: string, unitType: UnitType): Promise<Game | undefined>;
+  removeFromQueue(gameId: string, cityId: string, index: number): Promise<Game | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -82,6 +87,79 @@ export class MemStorage implements IStorage {
 
   async deleteGame(id: string): Promise<boolean> {
     return this.games.delete(id);
+  }
+
+  async setDefaultProduction(gameId: string, cityId: string, unitType: UnitType | null): Promise<Game | undefined> {
+    const game = this.games.get(gameId);
+    if (!game) return undefined;
+
+    const cities = [...(game.cities as City[])];
+    const cityIndex = cities.findIndex(c => c.id === cityId);
+    if (cityIndex === -1) return undefined;
+
+    cities[cityIndex] = {
+      ...cities[cityIndex],
+      defaultProduction: unitType || undefined,
+    };
+
+    const updatedGame: Game = {
+      ...game,
+      cities: cities,
+    };
+
+    this.games.set(gameId, updatedGame);
+    return updatedGame;
+  }
+
+  async addToQueue(gameId: string, cityId: string, unitType: UnitType): Promise<Game | undefined> {
+    const game = this.games.get(gameId);
+    if (!game) return undefined;
+
+    const cities = [...(game.cities as City[])];
+    const cityIndex = cities.findIndex(c => c.id === cityId);
+    if (cityIndex === -1) return undefined;
+
+    const currentQueue = cities[cityIndex].productionQueue || [];
+    cities[cityIndex] = {
+      ...cities[cityIndex],
+      productionQueue: [...currentQueue, unitType],
+    };
+
+    const updatedGame: Game = {
+      ...game,
+      cities: cities,
+    };
+
+    this.games.set(gameId, updatedGame);
+    return updatedGame;
+  }
+
+  async removeFromQueue(gameId: string, cityId: string, index: number): Promise<Game | undefined> {
+    const game = this.games.get(gameId);
+    if (!game) return undefined;
+
+    const cities = [...(game.cities as City[])];
+    const cityIndex = cities.findIndex(c => c.id === cityId);
+    if (cityIndex === -1) return undefined;
+
+    const currentQueue = cities[cityIndex].productionQueue || [];
+    if (index < 0 || index >= currentQueue.length) return undefined;
+
+    const newQueue = [...currentQueue];
+    newQueue.splice(index, 1);
+
+    cities[cityIndex] = {
+      ...cities[cityIndex],
+      productionQueue: newQueue,
+    };
+
+    const updatedGame: Game = {
+      ...game,
+      cities: cities,
+    };
+
+    this.games.set(gameId, updatedGame);
+    return updatedGame;
   }
 }
 
