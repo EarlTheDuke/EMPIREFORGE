@@ -25,10 +25,16 @@ export default function EmpireGame() {
     moveUnit,
     produceUnit,
     endTurn,
+    setDefaultProduction,
+    addToQueue,
+    removeFromQueue,
     isCreatingGame,
     isMovingUnit,
     isProducingUnit,
     isEndingTurn,
+    isSettingDefaultProduction,
+    isAddingToQueue,
+    isRemovingFromQueue,
     moveResult,
     createdGame
   } = useGameState(gameId);
@@ -139,18 +145,15 @@ export default function EmpireGame() {
   };
 
   const handleSetDefaultProduction = (cityId: string, unitType: UnitType | null) => {
-    // TODO: Implement API call to set default production
-    console.log('Set default production:', cityId, unitType);
+    setDefaultProduction({ cityId, unitType });
   };
 
   const handleAddToQueue = (cityId: string, unitType: UnitType) => {
-    // TODO: Implement API call to add unit to production queue
-    console.log('Add to queue:', cityId, unitType);
+    addToQueue({ cityId, unitType });
   };
 
   const handleRemoveFromQueue = (cityId: string, index: number) => {
-    // TODO: Implement API call to remove unit from queue
-    console.log('Remove from queue:', cityId, index);
+    removeFromQueue({ cityId, index });
   };
 
   const handleEndTurn = () => {
