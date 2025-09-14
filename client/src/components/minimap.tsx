@@ -16,10 +16,10 @@ export default function Minimap({ gameState, gridWidth, gridHeight, contentWidth
   const [viewport, setViewport] = useState<{ x: number; y: number; w: number; h: number }>({ x: 0, y: 0, w: 0, h: 0 });
 
   const size = useMemo(() => {
-    // Keep aspect ratio to the map
-    const scale = 6; // pixels per tile on the minimap (approx)
-    const width = Math.max(120, Math.min(320, gridWidth * scale));
-    const height = Math.max(90, Math.min(240, Math.round((gridHeight / gridWidth) * width)));
+    // Reduce minimap by ~25% to give more space to the tactical map
+    const scale = 4.5; // was 6
+    const width = Math.max(100, Math.min(240, Math.round(gridWidth * scale)));
+    const height = Math.max(75, Math.min(180, Math.round((gridHeight / gridWidth) * width)));
     return { width, height };
   }, [gridWidth, gridHeight]);
 

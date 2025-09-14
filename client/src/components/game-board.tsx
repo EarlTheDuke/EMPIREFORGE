@@ -136,22 +136,47 @@ export default function GameBoard({ gameState, selectedUnit, selectedCity, onCel
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-bold text-terminal">TACTICAL MAP</h3>
         <div className="flex space-x-2">
+          <button
+            data-testid="pan-left"
+            onClick={() => {
+              const el = gridRef.current;
+              if (!el) return;
+              const pan = Math.max(50, Math.round(cellSize * 8));
+              el.scrollLeft = Math.max(0, el.scrollLeft - pan);
+            }}
+            className="retro-button px-3 py-1 text-xs rounded"
+          >
+            ◀
+          </button>
           <button data-testid="zoom-out" onClick={handleZoomOut} className="retro-button px-3 py-1 text-xs rounded">-</button>
           <span className="text-sm text-muted-foreground px-2">Zoom</span>
           <button data-testid="zoom-in" onClick={handleZoomIn} className="retro-button px-3 py-1 text-xs rounded">+</button>
           <button data-testid="zoom-reset" onClick={handleZoomReset} className="retro-button px-3 py-1 text-xs rounded">Reset</button>
+          <button
+            data-testid="pan-right"
+            onClick={() => {
+              const el = gridRef.current;
+              if (!el) return;
+              const pan = Math.max(50, Math.round(cellSize * 8));
+              el.scrollLeft = Math.min(el.scrollWidth, el.scrollLeft + pan);
+            }}
+            className="retro-button px-3 py-1 text-xs rounded"
+          >
+            ▶
+          </button>
         </div>
       </div>
       
-      <div 
-        data-testid="game-grid"
-        ref={gridRef}
-        className="grid gap-0 bg-background border-2 border-border overflow-auto max-h-96"
-        style={{ gridTemplateColumns: `repeat(${gridWidth}, ${cellSize}px)`, width: '100%' }}
-      >
-        {Array.from({ length: gridHeight }, (_, y) =>
-          Array.from({ length: gridWidth }, (_, x) => renderCell(x, y))
-        )}
+      <div className="w-full overflow-x-auto overflow-y-auto border-2 border-border bg-background max-h-[60vh]" ref={gridRef}>
+        <div 
+          data-testid="game-grid"
+          className="grid gap-0"
+          style={{ gridTemplateColumns: `repeat(${gridWidth}, ${cellSize}px)` }}
+        >
+          {Array.from({ length: gridHeight }, (_, y) =>
+            Array.from({ length: gridWidth }, (_, x) => renderCell(x, y))
+          )}
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
@@ -177,7 +202,7 @@ export default function GameBoard({ gameState, selectedUnit, selectedCity, onCel
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-2">
         <Minimap 
           gameState={gameState}
           gridWidth={gridWidth}

@@ -13,14 +13,54 @@ export const UNIT_TYPES = {
   nuclear: { symbol: 'N', cost: 30, movement: 1, combat: 8, productionTime: 8 }
 };
 
-// Increased map size ~1.5x to provide a larger play area
-export const GRID_SIZE = { width: 30, height: 22 };
+// Seeded RNG helpers
+type RNG = () => number;
 
-export function generateInitialGameState(): GameState {
-  const gridData = generateMap();
-  const cities = placeCities(gridData);
+function mulberry32(seedNumber: number): RNG {
+  let state = seedNumber >>> 0;
+  return function() {
+    state |= 0;
+    state = state + 0x6D2B79F5 | 0;
+    let t = Math.imul(state ^ state >>> 15, 1 | state);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function hashSeedToNumber(seed: string | number | undefined): number {
+  if (seed === undefined) return Math.floor(Math.random() * 2 ** 31);
+  if (typeof seed === 'number') return seed;
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+export type GameOptions = {
+  width?: number;
+  height?: number;
+  targetCities?: number;
+  seed?: string | number;
+};
+
+const DEFAULT_OPTIONS: Required<Pick<GameOptions, 'width' | 'height' | 'targetCities'>> = {
+  width: 80,
+  height: 50,
+  targetCities: 60,
+};
+
+export function generateInitialGameState(options?: GameOptions): GameState {
+  const width = Math.max(20, Math.min(200, options?.width ?? DEFAULT_OPTIONS.width));
+  const height = Math.max(15, Math.min(200, options?.height ?? DEFAULT_OPTIONS.height));
+  const targetCities = Math.max(4, Math.min(200, options?.targetCities ?? DEFAULT_OPTIONS.targetCities));
+  const rng: RNG = mulberry32(hashSeedToNumber(options?.seed));
+
+  const gridData = generateMap(width, height, rng);
+  const cities = placeCities(gridData, targetCities, rng);
   const units = placeStartingUnits(cities);
-  const fogOfWar = initializeFogOfWar();
+  const fogOfWar = initializeFogOfWar(width, height);
   
   // Reveal area around human starting city
   const humanCity = cities.find(c => c.owner === 'human');
@@ -39,30 +79,34 @@ export function generateInitialGameState(): GameState {
   };
 }
 
-function generateMap(): ('water' | 'land')[][] {
+function generateMap(width: number, height: number, rng: RNG): ('water' | 'land')[][] {
   const grid: ('water' | 'land')[][] = [];
 
   // Initialize all as water
-  for (let y = 0; y < GRID_SIZE.height; y++) {
+  for (let y = 0; y < height; y++) {
     grid[y] = [];
-    for (let x = 0; x < GRID_SIZE.width; x++) {
+    for (let x = 0; x < width; x++) {
       grid[y][x] = 'water';
     }
   }
 
-  // Generate 3-5 islands
-  const numIslands = 3 + Math.floor(Math.random() * 3);
+  // Generate islands scaled by area (aim ~35-45% land)
+  const area = width * height;
+  const baseIslands = Math.round(area / 400);
+  const numIslands = Math.max(6, Math.min(24, baseIslands + Math.floor(rng() * 4) - 1));
   for (let i = 0; i < numIslands; i++) {
-    generateIsland(grid);
+    generateIsland(grid, rng);
   }
 
   return grid;
 }
 
-function generateIsland(grid: ('water' | 'land')[][]): void {
-  const centerX = Math.floor(Math.random() * GRID_SIZE.width);
-  const centerY = Math.floor(Math.random() * GRID_SIZE.height);
-  const size = 3 + Math.floor(Math.random() * 5);
+function generateIsland(grid: ('water' | 'land')[][], rng: RNG): void {
+  const height = grid.length;
+  const width = grid[0].length;
+  const centerX = Math.floor(rng() * width);
+  const centerY = Math.floor(rng() * height);
+  const size = 3 + Math.floor(rng() * 7);
 
   for (let dy = -size; dy <= size; dy++) {
     for (let dx = -size; dx <= size; dx++) {
@@ -70,34 +114,48 @@ function generateIsland(grid: ('water' | 'land')[][]): void {
       const y = centerY + dy;
       const distance = Math.sqrt(dx * dx + dy * dy);
       
-      if (x >= 0 && x < GRID_SIZE.width && y >= 0 && y < GRID_SIZE.height && 
-          distance <= size && Math.random() > distance / size * 0.6) {
+      if (x >= 0 && x < width && y >= 0 && y < height && 
+          distance <= size && rng() > distance / size * 0.6) {
         grid[y][x] = 'land';
       }
     }
   }
 }
 
-function placeCities(gridData: ('water' | 'land')[][]): City[] {
+function placeCities(gridData: ('water' | 'land')[][], targetCities: number, rng: RNG): City[] {
   const landTiles = [];
+  const height = gridData.length;
+  const width = gridData[0].length;
   
   // Find all land tiles
-  for (let y = 0; y < GRID_SIZE.height; y++) {
-    for (let x = 0; x < GRID_SIZE.width; x++) {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
       if (gridData[y][x] === 'land') {
         landTiles.push({ x, y });
       }
     }
   }
 
-  // Place 8-12 cities randomly on land
-  const numCities = Math.min(8 + Math.floor(Math.random() * 5), landTiles.length);
+  // Shuffle land tiles deterministically
+  for (let i = landTiles.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [landTiles[i], landTiles[j]] = [landTiles[j], landTiles[i]];
+  }
+
+  // Place ~targetCities with minimum spacing
+  const minSpacing = 3; // Euclidean distance >= 3
+  const desired = Math.min(targetCities, landTiles.length);
   const cities: City[] = [];
-  
-  for (let i = 0; i < numCities; i++) {
-    const randomIndex = Math.floor(Math.random() * landTiles.length);
-    const tile = landTiles.splice(randomIndex, 1)[0];
-    
+
+  for (let idx = 0; idx < landTiles.length && cities.length < desired; idx++) {
+    const tile = landTiles[idx];
+    const tooClose = cities.some(c => {
+      const dx = c.x - tile.x;
+      const dy = c.y - tile.y;
+      return Math.sqrt(dx * dx + dy * dy) < minSpacing;
+    });
+    if (tooClose) continue;
+    const i = cities.length;
     cities.push({
       id: nanoid(),
       x: tile.x,
@@ -144,27 +202,27 @@ function placeStartingUnits(cities: City[]): Unit[] {
   return units;
 }
 
-function initializeFogOfWar(): boolean[][] {
+function initializeFogOfWar(width: number, height: number): boolean[][] {
   const fogOfWar: boolean[][] = [];
-  
-  for (let y = 0; y < GRID_SIZE.height; y++) {
+  for (let y = 0; y < height; y++) {
     fogOfWar[y] = [];
-    for (let x = 0; x < GRID_SIZE.width; x++) {
+    for (let x = 0; x < width; x++) {
       fogOfWar[y][x] = true; // true = hidden
     }
   }
-
   return fogOfWar;
 }
 
 export function revealArea(fogOfWar: boolean[][], centerX: number, centerY: number, radius: number): void {
+  const height = fogOfWar.length;
+  const width = fogOfWar[0].length;
   for (let dy = -radius; dy <= radius; dy++) {
     for (let dx = -radius; dx <= radius; dx++) {
       const x = centerX + dx;
       const y = centerY + dy;
       const distance = Math.sqrt(dx * dx + dy * dy);
       
-      if (x >= 0 && x < GRID_SIZE.width && y >= 0 && y < GRID_SIZE.height && distance <= radius) {
+      if (x >= 0 && x < width && y >= 0 && y < height && distance <= radius) {
         fogOfWar[y][x] = false;
       }
     }
@@ -189,7 +247,9 @@ export function moveUnit(gameState: GameState, unitId: string, targetX: number, 
   }
 
   // Bounds check
-  if (targetX < 0 || targetX >= GRID_SIZE.width || targetY < 0 || targetY >= GRID_SIZE.height) {
+  const mapHeight = gameState.gridData.length;
+  const mapWidth = gameState.gridData[0].length;
+  if (targetX < 0 || targetX >= mapWidth || targetY < 0 || targetY >= mapHeight) {
     return { success: false, error: "Target position is out of bounds" };
   }
 
@@ -327,13 +387,15 @@ function produceUnitForPlayer(gameState: GameState, cityId: string, unitType: Un
   if (isNavalUnit) {
     // Naval units need water placement - check adjacent water tiles
     const adjacentWaterTiles = [];
+    const mapHeight = gameState.gridData.length;
+    const mapWidth = gameState.gridData[0].length;
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         const checkX = city.x + dx;
         const checkY = city.y + dy;
         
-        if (checkX >= 0 && checkX < GRID_SIZE.width && 
-            checkY >= 0 && checkY < GRID_SIZE.height && 
+        if (checkX >= 0 && checkX < mapWidth && 
+            checkY >= 0 && checkY < mapHeight && 
             gameState.gridData[checkY][checkX] === 'water') {
           const isOccupied = gameState.units.find(u => u.x === checkX && u.y === checkY);
           if (!isOccupied) {
@@ -362,6 +424,8 @@ function produceUnitForPlayer(gameState: GameState, cityId: string, unitType: Un
     if (existingUnit) {
       // Find adjacent free land tiles
       const adjacentLandTiles = [];
+      const mapHeight = gameState.gridData.length;
+      const mapWidth = gameState.gridData[0].length;
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
           if (dx === 0 && dy === 0) continue; // Skip city tile itself
@@ -369,8 +433,8 @@ function produceUnitForPlayer(gameState: GameState, cityId: string, unitType: Un
           const checkX = city.x + dx;
           const checkY = city.y + dy;
           
-          if (checkX >= 0 && checkX < GRID_SIZE.width && 
-              checkY >= 0 && checkY < GRID_SIZE.height && 
+          if (checkX >= 0 && checkX < mapWidth && 
+              checkY >= 0 && checkY < mapHeight && 
               gameState.gridData[checkY][checkX] === 'land') {
             const isOccupied = gameState.units.find(u => u.x === checkX && u.y === checkY);
             if (!isOccupied) {
@@ -440,7 +504,9 @@ export function performAITurn(gameState: GameState): GameState {
       const newY = unit.y + dy;
       
       // Check bounds
-      if (newX >= 0 && newX < GRID_SIZE.width && newY >= 0 && newY < GRID_SIZE.height) {
+      const mapHeight = gameState.gridData.length;
+      const mapWidth = gameState.gridData[0].length;
+      if (newX >= 0 && newX < mapWidth && newY >= 0 && newY < mapHeight) {
         const targetUnit = gameState.units.find(u => u.x === newX && u.y === newY);
         
         if (targetUnit && targetUnit.owner === 'human') {
@@ -504,8 +570,10 @@ export function performAITurn(gameState: GameState): GameState {
       for (let dx = -1; dx <= 1; dx++) {
         const checkX = city.x + dx;
         const checkY = city.y + dy;
-        if (checkX >= 0 && checkX < GRID_SIZE.width && 
-            checkY >= 0 && checkY < GRID_SIZE.height && 
+        const mapHeight = gameState.gridData.length;
+        const mapWidth = gameState.gridData[0].length;
+        if (checkX >= 0 && checkX < mapWidth && 
+            checkY >= 0 && checkY < mapHeight && 
             gameState.gridData[checkY][checkX] === 'water') {
           isCoastal = true;
           // Check if water tile is unoccupied

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { type Game, type GameState, type CombatResult, type UnitType } from '@shared/schema';
+import type { GameOptions } from '@/lib/game-logic';
 
 export function useGameState(gameId: string | null) {
   const queryClient = useQueryClient();
@@ -12,8 +13,8 @@ export function useGameState(gameId: string | null) {
   });
 
   const createGameMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/games');
+    mutationFn: async (opts?: GameOptions) => {
+      const response = await apiRequest('POST', '/api/games', opts || {});
       return response.json();
     },
     onSuccess: (data) => {
@@ -108,6 +109,7 @@ export function useGameState(gameId: string | null) {
     isLoading: gameQuery.isLoading,
     error: gameQuery.error,
     createGame: createGameMutation.mutate,
+    createGameAsync: createGameMutation.mutateAsync,
     moveUnit: moveUnitMutation.mutate,
     produceUnit: produceUnitMutation.mutate,
     endTurn: endTurnMutation.mutate,

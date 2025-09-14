@@ -61,6 +61,13 @@ export const combatResultSchema = z.object({
   capturedCity: citySchema.optional(),
 });
 
+export const createGameOptionsSchema = z.object({
+  width: z.number().min(20).max(200).optional(),
+  height: z.number().min(15).max(200).optional(),
+  targetCities: z.number().min(4).max(200).optional(),
+  seed: z.union([z.string(), z.number()]).optional(),
+});
+
 export const moveUnitSchema = z.object({
   gameId: z.string(),
   unitId: z.string(),

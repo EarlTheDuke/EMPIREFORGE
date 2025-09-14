@@ -1,14 +1,15 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { gameStateSchema, moveUnitSchema, produceUnitSchema, setDefaultProductionSchema, addToQueueSchema, removeFromQueueSchema, type GameState } from "@shared/schema";
+import { gameStateSchema, moveUnitSchema, produceUnitSchema, setDefaultProductionSchema, addToQueueSchema, removeFromQueueSchema, createGameOptionsSchema, type GameState } from "@shared/schema";
 import { generateInitialGameState, moveUnit, produceUnit, startProduction, performAITurn, checkVictoryConditions, processAutomaticProduction, UNIT_TYPES } from "../client/src/lib/game-logic";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new game
   app.post("/api/games", async (req, res) => {
     try {
-      const initialGameState = generateInitialGameState();
+      const parse = createGameOptionsSchema.safeParse(req.body || {});
+      const initialGameState = generateInitialGameState(parse.success ? parse.data : undefined);
       const game = await storage.createGame(initialGameState);
       res.json(game);
     } catch (error: any) {
