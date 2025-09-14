@@ -114,6 +114,15 @@
 .grid-cell.fog {
   background-color: hsl(0, 0%, 5%);
   position: relative;
+  overflow: hidden;
+}
+
+.grid-cell.fog::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 25% 25%, rgba(255,255,255,0.04), transparent 40%),
+              radial-gradient(circle at 75% 75%, rgba(255,255,255,0.04), transparent 40%);
 }
 
 .grid-cell.fog::after {
@@ -127,6 +136,8 @@
     transparent 2px,
     transparent 4px
   );
+  mix-blend-mode: multiply;
+  opacity: 0.9;
 }
 
 .unit-icon {
@@ -148,6 +159,7 @@
   height: 8px;
   background-color: var(--secondary);
   border-radius: 50%;
+  box-shadow: 0 0 4px hsl(45, 100%, 50%, 0.9);
 }
 
 .selected {

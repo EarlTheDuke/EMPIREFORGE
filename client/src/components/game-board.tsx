@@ -1,5 +1,7 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { type GameState, type Unit, type City } from '@shared/schema';
 import { UNIT_TYPES } from '@/lib/game-logic';
+import Minimap from '@/components/minimap';
 
 interface GameBoardProps {
   gameState: GameState;
@@ -9,6 +11,72 @@ interface GameBoardProps {
 }
 
 export default function GameBoard({ gameState, selectedUnit, selectedCity, onCellClick }: GameBoardProps) {
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [zoom, setZoom] = useState<number>(1);
+  const baseCell = 24;
+  const cellSize = Math.max(12, Math.min(48, Math.round(baseCell * zoom)));
+  const gridWidth = useMemo(() => (gameState.gridData[0]?.length ?? 0), [gameState.gridData]);
+  const gridHeight = useMemo(() => gameState.gridData.length, [gameState.gridData]);
+  const contentWidth = gridWidth * cellSize;
+  const contentHeight = gridHeight * cellSize;
+
+  const handleZoomIn = () => setZoom((z) => Math.min(2.5, +(z + 0.1).toFixed(2)));
+  const handleZoomOut = () => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)));
+  const handleZoomReset = () => setZoom(1);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!gridRef.current) return;
+      const el = gridRef.current;
+      const pan = Math.max(20, Math.round(cellSize * 2));
+      switch (e.key) {
+        case '+':
+        case '=':
+        case 'Add':
+          e.preventDefault();
+          handleZoomIn();
+          break;
+        case '-':
+        case 'Subtract':
+          e.preventDefault();
+          handleZoomOut();
+          break;
+        case '0':
+          e.preventDefault();
+          handleZoomReset();
+          break;
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          e.preventDefault();
+          el.scrollLeft = Math.max(0, el.scrollLeft - pan);
+          break;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          e.preventDefault();
+          el.scrollLeft = Math.min(el.scrollWidth, el.scrollLeft + pan);
+          break;
+        case 'ArrowUp':
+        case 'w':
+        case 'W':
+          e.preventDefault();
+          el.scrollTop = Math.max(0, el.scrollTop - pan);
+          break;
+        case 'ArrowDown':
+        case 's':
+        case 'S':
+          e.preventDefault();
+          el.scrollTop = Math.min(el.scrollHeight, el.scrollTop + pan);
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [cellSize]);
+
   const renderCell = (x: number, y: number) => {
     const isHidden = gameState.fogOfWar[y][x];
     const terrain = gameState.gridData[y][x];
@@ -36,6 +104,7 @@ export default function GameBoard({ gameState, selectedUnit, selectedCity, onCel
         data-x={x}
         data-y={y}
         data-testid={`grid-cell-${x}-${y}`}
+        style={{ width: `${cellSize}px`, height: `${cellSize}px` }}
         onClick={() => onCellClick(x, y)}
       >
         {!isHidden && city && (
@@ -67,19 +136,21 @@ export default function GameBoard({ gameState, selectedUnit, selectedCity, onCel
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-bold text-terminal">TACTICAL MAP</h3>
         <div className="flex space-x-2">
-          <button data-testid="zoom-out" className="retro-button px-3 py-1 text-xs rounded">-</button>
+          <button data-testid="zoom-out" onClick={handleZoomOut} className="retro-button px-3 py-1 text-xs rounded">-</button>
           <span className="text-sm text-muted-foreground px-2">Zoom</span>
-          <button data-testid="zoom-in" className="retro-button px-3 py-1 text-xs rounded">+</button>
+          <button data-testid="zoom-in" onClick={handleZoomIn} className="retro-button px-3 py-1 text-xs rounded">+</button>
+          <button data-testid="zoom-reset" onClick={handleZoomReset} className="retro-button px-3 py-1 text-xs rounded">Reset</button>
         </div>
       </div>
       
       <div 
         data-testid="game-grid"
-        className="grid gap-0 bg-background border-2 border-border overflow-auto max-h-96" 
-        style={{ gridTemplateColumns: 'repeat(20, 1fr)' }}
+        ref={gridRef}
+        className="grid gap-0 bg-background border-2 border-border overflow-auto max-h-96"
+        style={{ gridTemplateColumns: `repeat(${gridWidth}, ${cellSize}px)`, width: '100%' }}
       >
-        {Array.from({ length: 15 }, (_, y) =>
-          Array.from({ length: 20 }, (_, x) => renderCell(x, y))
+        {Array.from({ length: gridHeight }, (_, y) =>
+          Array.from({ length: gridWidth }, (_, x) => renderCell(x, y))
         )}
       </div>
 
@@ -104,6 +175,17 @@ export default function GameBoard({ gameState, selectedUnit, selectedCity, onCel
           <div className="w-4 h-4" style={{ background: 'hsl(220 50% 15%)' }}></div>
           <span>Water</span>
         </div>
+      </div>
+
+      <div className="mt-4">
+        <Minimap 
+          gameState={gameState}
+          gridWidth={gridWidth}
+          gridHeight={gridHeight}
+          contentWidth={contentWidth}
+          contentHeight={contentHeight}
+          scrollContainerRef={gridRef}
+        />
       </div>
     </div>
   );

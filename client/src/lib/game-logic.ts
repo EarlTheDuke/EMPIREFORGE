@@ -13,7 +13,8 @@ export const UNIT_TYPES = {
   nuclear: { symbol: 'N', cost: 30, movement: 1, combat: 8, productionTime: 8 }
 };
 
-export const GRID_SIZE = { width: 20, height: 15 };
+// Increased map size ~1.5x to provide a larger play area
+export const GRID_SIZE = { width: 30, height: 22 };
 
 export function generateInitialGameState(): GameState {
   const gridData = generateMap();
